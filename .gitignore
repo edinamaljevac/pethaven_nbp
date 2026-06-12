@@ -1,0 +1,57 @@
+# Build output
+**/bin/
+**/obj/
+**/out/
+**/publish/
+
+# IDE and operating system files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+
+# Frontend dependencies and output
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+**/appsettings.Development.json
+**/appsettings.Local.json
+secrets.json
+
+# Logs and local runtime files
+**/Logs/
+**/logs/
+*.log
+
+# Uploaded/generated runtime content
+backend/PetHaven.Api/wwwroot/uploads/*
+!backend/PetHaven.Api/wwwroot/uploads/.gitkeep
+backend/PetHaven.Api/wwwroot/generated/*
+!backend/PetHaven.Api/wwwroot/generated/.gitkeep
+
+# Licensed/local databases and certificates
+*.mmdb
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Test and coverage output
+TestResults/
+coverage/
+coverage.*
+*.trx
+

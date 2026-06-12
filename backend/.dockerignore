@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/out/
+**/publish/
+**/Logs/
+**/logs/
+**/*.user
+.vs/
+.vscode/
+.idea/
+.git/
+.gitignore
+**/appsettings.Development.json
+**/appsettings.Local.json
