@@ -20,9 +20,9 @@ public class AdoptionContractGenerator : IAdoptionContractGenerator
 
         var page = document.AddPage();
         var graphics = XGraphics.FromPdfPage(page);
-        var titleFont = new XFont("Arial", 18, XFontStyle.Bold);
-        var labelFont = new XFont("Arial", 11, XFontStyle.Bold);
-        var valueFont = new XFont("Arial", 11, XFontStyle.Regular);
+        var titleFont = new XFont("DejaVu Sans", 18, XFontStyle.Bold);
+        var labelFont = new XFont("DejaVu Sans", 11, XFontStyle.Bold);
+        var valueFont = new XFont("DejaVu Sans", 11, XFontStyle.Regular);
 
         var y = 50d;
         graphics.DrawString("PetHaven Adoption Contract", titleFont, XBrushes.DarkSlateGray, new XRect(40, y, page.Width - 80, 30), XStringFormats.TopCenter);

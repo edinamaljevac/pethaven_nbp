@@ -17,6 +17,9 @@ RUN dotnet publish PetHaven.Api/PetHaven.Api.csproj -c Release -o /app/publish
 # ---- Runtime stage ----
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
 
 # Hosts such as Render inject the listening port via $PORT at runtime. The shell-form
