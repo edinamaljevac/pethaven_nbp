@@ -3,6 +3,7 @@ using MaxMind.GeoIP2.Exceptions;
 using Microsoft.Extensions.Options;
 using PetHaven.Api.Settings;
 using System.Net;
+using System.Net.Sockets;
 
 namespace PetHaven.Api.Middleware;
 
@@ -10,9 +11,10 @@ public class GeoLocationEnrichmentMiddleware
 {
     public const string ContextKey = "RequestGeo";
     private readonly GeoLocationSettings _settings;
-    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<GeoLocationEnrichmentMiddleware> _logger;
     private readonly RequestDelegate _next;
+
+    private readonly DatabaseReader? _reader;
 
     public GeoLocationEnrichmentMiddleware(
         RequestDelegate next,
@@ -22,8 +24,24 @@ public class GeoLocationEnrichmentMiddleware
     {
         _next = next;
         _settings = settings.Value;
-        _environment = environment;
         _logger = logger;
+
+        var databasePath = ResolveDatabasePath(environment);
+        if (File.Exists(databasePath))
+        {
+            try
+            {
+                _reader = new DatabaseReader(databasePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to open MaxMind GeoLite2 database at {DatabasePath}. Falling back to header/default location.", databasePath);
+            }
+        }
+        else
+        {
+            _logger.LogWarning("MaxMind GeoLite2 database not found at {DatabasePath}. Geo enrichment will use the configured fallback location.", databasePath);
+        }
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -35,15 +53,19 @@ public class GeoLocationEnrichmentMiddleware
 
     private RequestGeo ResolveGeo(HttpContext context, string ipAddress)
     {
-        var databasePath = ResolveDatabasePath();
+        var headerGeo = ResolveFromHeaders(context, ipAddress);
+        if (headerGeo is not null)
+        {
+            return headerGeo;
+        }
 
-        if (File.Exists(databasePath) && IPAddress.TryParse(ipAddress, out var parsedIp))
+        if (_reader is not null
+            && IPAddress.TryParse(ipAddress, out var parsedIp)
+            && !IsPrivateOrLoopback(parsedIp))
         {
             try
             {
-                using var reader = new DatabaseReader(databasePath);
-                var city = reader.City(parsedIp);
-
+                var city = _reader.City(parsedIp);
                 return new RequestGeo(
                     city.Country.Name ?? "Unknown",
                     city.MostSpecificSubdivision.Name ?? "Unknown",
@@ -54,7 +76,6 @@ public class GeoLocationEnrichmentMiddleware
             }
             catch (AddressNotFoundException)
             {
-                return Unknown(ipAddress);
             }
             catch (Exception ex)
             {
@@ -62,23 +83,57 @@ public class GeoLocationEnrichmentMiddleware
             }
         }
 
-        return new RequestGeo(
-            context.Request.Headers["X-Geo-Country"].FirstOrDefault() ?? "Unknown",
-            context.Request.Headers["X-Geo-Region"].FirstOrDefault() ?? "Unknown",
-            context.Request.Headers["X-Geo-City"].FirstOrDefault() ?? "Unknown",
-            ipAddress,
-            ParseNullableDouble(context.Request.Headers["X-Geo-Latitude"].FirstOrDefault()),
-            ParseNullableDouble(context.Request.Headers["X-Geo-Longitude"].FirstOrDefault()));
+        return FallbackGeo(ipAddress);
     }
 
-    private string ResolveDatabasePath()
+    private RequestGeo? ResolveFromHeaders(HttpContext context, string ipAddress)
     {
-        if (Path.IsPathRooted(_settings.DatabasePath))
+        var country = context.Request.Headers["X-Geo-Country"].FirstOrDefault();
+        var region = context.Request.Headers["X-Geo-Region"].FirstOrDefault();
+        var city = context.Request.Headers["X-Geo-City"].FirstOrDefault();
+        var latitude = ParseNullableDouble(context.Request.Headers["X-Geo-Latitude"].FirstOrDefault());
+        var longitude = ParseNullableDouble(context.Request.Headers["X-Geo-Longitude"].FirstOrDefault());
+
+        if (string.IsNullOrWhiteSpace(country)
+            && string.IsNullOrWhiteSpace(region)
+            && string.IsNullOrWhiteSpace(city)
+            && latitude is null
+            && longitude is null)
         {
-            return _settings.DatabasePath;
+            return null;
         }
 
-        return Path.Combine(_environment.ContentRootPath, _settings.DatabasePath);
+        return new RequestGeo(
+            country ?? "Unknown",
+            region ?? "Unknown",
+            city ?? "Unknown",
+            ipAddress,
+            latitude,
+            longitude);
+    }
+
+    private RequestGeo FallbackGeo(string ipAddress)
+    {
+        var fallback = _settings.FallbackLocation;
+        if (fallback is null)
+        {
+            return new RequestGeo("Unknown", "Unknown", "Unknown", ipAddress, null, null);
+        }
+
+        return new RequestGeo(
+            fallback.Country,
+            fallback.Region,
+            fallback.City,
+            ipAddress,
+            fallback.Latitude,
+            fallback.Longitude);
+    }
+
+    private string ResolveDatabasePath(IWebHostEnvironment environment)
+    {
+        return Path.IsPathRooted(_settings.DatabasePath)
+            ? _settings.DatabasePath
+            : Path.Combine(environment.ContentRootPath, _settings.DatabasePath);
     }
 
     private static string ResolveClientIp(HttpContext context)
@@ -92,9 +147,28 @@ public class GeoLocationEnrichmentMiddleware
         return context.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "unknown";
     }
 
-    private static RequestGeo Unknown(string ipAddress)
+    private static bool IsPrivateOrLoopback(IPAddress ip)
     {
-        return new RequestGeo("Unknown", "Unknown", "Unknown", ipAddress, null, null);
+        if (IPAddress.IsLoopback(ip))
+        {
+            return true;
+        }
+
+        if (ip.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = ip.GetAddressBytes();
+            return bytes[0] == 10
+                || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
+                || (bytes[0] == 192 && bytes[1] == 168)
+                || (bytes[0] == 169 && bytes[1] == 254);
+        }
+
+        if (ip.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            return ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || (ip.GetAddressBytes()[0] & 0xFE) == 0xFC;
+        }
+
+        return false;
     }
 
     private static double? ParseNullableDouble(string? value)
