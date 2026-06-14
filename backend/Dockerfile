@@ -18,11 +18,11 @@ RUN dotnet publish PetHaven.Api/PetHaven.Api.csproj -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+    && apt-get install -y --no-install-recommends curl fontconfig fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Hosts such as Render inject the listening port via $PORT at runtime. The shell-form
-# ENTRYPOINT lets us expand it; falls back to 8080 for local `docker run`.
 EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "ASPNETCORE_URLS=http://+:${PORT:-8080} dotnet PetHaven.Api.dll"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
