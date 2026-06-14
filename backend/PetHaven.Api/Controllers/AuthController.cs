@@ -108,7 +108,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login(LoginCommand command)
     {
         var response = await _mediator.Send(command);
-        await TrackLoginLocation(command.Email);
+        response.SecurityWarning = await TrackLoginLocation(command.Email);
         return Ok(response);
     }
 
@@ -122,27 +122,28 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
-    private async Task TrackLoginLocation(string email)
+    private async Task<string?> TrackLoginLocation(string email)
     {
         var geo = HttpContext.Items[GeoLocationEnrichmentMiddleware.ContextKey] as RequestGeo;
         if (geo is null)
         {
-            return;
+            return null;
         }
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
         if (user is null)
         {
-            return;
+            return null;
         }
 
+        string? securityWarning = null;
         var previousLogin = (await _unitOfWork.LoginEvents.GetAllAsync())
             .Where(x => x.UserId == user.Id)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefault();
 
-        if (IsSuspiciousLocationChange(previousLogin, geo))
+        if (user.Role != UserRole.Adopter && IsSuspiciousLocationChange(previousLogin, geo))
         {
             await _unitOfWork.Notifications.AddAsync(new Notification
             {
@@ -151,6 +152,25 @@ public class AuthController : ControllerBase
                 Title = "New login location detected",
                 Message = $"Your account usually logged in from {FormatLocation(previousLogin!)}, but this login came from {FormatLocation(geo)}."
             });
+        }
+
+        if (user.Role == UserRole.Adopter)
+        {
+            var profile = await _unitOfWork.AdopterProfiles.FirstOrDefaultAsync(x => x.UserId == user.Id);
+            if (profile is not null
+                && IsKnown(profile.Country)
+                && IsKnown(geo.Country)
+                && !string.Equals(profile.Country, geo.Country, StringComparison.OrdinalIgnoreCase))
+            {
+                securityWarning = $"Your profile country is {profile.Country}, but this login was detected from {geo.Country}.";
+                await _unitOfWork.Notifications.AddAsync(new Notification
+                {
+                    UserId = user.Id,
+                    Type = NotificationType.SecurityAlert,
+                    Title = "Login detected outside your profile country",
+                    Message = securityWarning
+                });
+            }
         }
 
         await _unitOfWork.LoginEvents.AddAsync(new LoginEvent
@@ -163,6 +183,7 @@ public class AuthController : ControllerBase
         });
 
         await _unitOfWork.SaveChangesAsync();
+        return securityWarning;
     }
 
     private static bool IsSuspiciousLocationChange(LoginEvent? previousLogin, RequestGeo geo)

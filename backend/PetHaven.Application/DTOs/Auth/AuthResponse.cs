@@ -7,4 +7,6 @@ public class AuthResponse
     public string RefreshToken { get; set; } = string.Empty;
 
     public DateTime AccessTokenExpiresAt { get; set; }
+
+    public string? SecurityWarning { get; set; }
 }

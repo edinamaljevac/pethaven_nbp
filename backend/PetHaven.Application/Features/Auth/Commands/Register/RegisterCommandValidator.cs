@@ -17,6 +17,11 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
             RuleFor(x => x.LastName).NotEmpty().MaximumLength(100);
         });
 
+        When(x => x.Role == UserRole.Adopter, () =>
+        {
+            RuleFor(x => x.AdopterCountry).NotEmpty().MaximumLength(100);
+        });
+
         When(x => x.Role == UserRole.Shelter, () =>
         {
             RuleFor(x => x.ShelterName).NotEmpty().MaximumLength(150);

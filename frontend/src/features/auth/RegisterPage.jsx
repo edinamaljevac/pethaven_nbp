@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import countryList from 'react-select-country-list'
 import { authApi } from '../../shared/api/endpoints'
 import { roles } from '../../shared/constants/enums'
 import { useAuth } from '../../shared/auth/AuthContext'
@@ -8,11 +9,12 @@ import { Field, inputClass } from '../../shared/ui/Field'
 import { ErrorState } from '../../shared/ui/State'
 
 const roleNames = { 0: 'Adopter', 1: 'Shelter', 2: 'Foster' }
+const countries = countryList().getData()
 
 export function RegisterPage() {
   const auth = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ firstName: '', lastName: '', shelterName: '', email: '', password: '', role: 0 })
+  const [form, setForm] = useState({ firstName: '', lastName: '', shelterName: '', email: '', password: '', role: 0, adopterCountry: '' })
   const [documents, setDocuments] = useState([])
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -66,6 +68,7 @@ export function RegisterPage() {
         </> : <>
           <Field label="First name"><input className={inputClass()} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />{fieldErrors.firstName && <FieldError message={fieldErrors.firstName} />}</Field>
           <Field label="Last name"><input className={inputClass()} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />{fieldErrors.lastName && <FieldError message={fieldErrors.lastName} />}</Field>
+          {role === 0 && <Field label="Country"><select className={inputClass()} value={form.adopterCountry} onChange={(e) => setForm({ ...form, adopterCountry: e.target.value })}><option value="">Choose country</option>{countries.map(country => <option key={country.value} value={country.label}>{country.label}</option>)}</select>{fieldErrors.adopterCountry && <FieldError message={fieldErrors.adopterCountry} />}</Field>}
         </>}
 
         <div className="md:col-span-2"><Button disabled={loading}>{loading ? 'Creating...' : `Register as ${roleNames[role]}`}</Button></div>
@@ -95,6 +98,7 @@ function validate(form, documents) {
   } else {
     if (!form.firstName.trim()) errors.firstName = 'First name is required.'
     if (!form.lastName.trim()) errors.lastName = 'Last name is required.'
+    if (role === 0 && !form.adopterCountry) errors.adopterCountry = 'Country is required.'
   }
 
   return errors
@@ -128,6 +132,7 @@ function buildPayload(form) {
   else {
     payload.firstName = form.firstName
     payload.lastName = form.lastName
+    if (role === 0) payload.adopterCountry = form.adopterCountry
   }
   return payload
 }

@@ -21,6 +21,7 @@ public class MyProfileDto
     public bool? ShelterIsVerified { get; set; }
 
     public string? AdopterAddress { get; set; }
+    public string? AdopterCountry { get; set; }
     public HousingType? AdopterHousingType { get; set; }
     public int? AdopterHouseholdMembers { get; set; }
     public bool? AdopterHasChildren { get; set; }

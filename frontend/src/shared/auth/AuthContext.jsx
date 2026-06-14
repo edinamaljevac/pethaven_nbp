@@ -40,7 +40,11 @@ export function AuthProvider({ children }) {
     setSession(readSession())
   }
 
-  const login = async (payload) => saveSession(await authApi.login(payload))
+  const login = async (payload) => {
+    const response = await authApi.login(payload)
+    saveSession(response)
+    return response.data
+  }
   const register = async (payload) => saveSession(await authApi.register(payload))
 
   const logout = async () => {

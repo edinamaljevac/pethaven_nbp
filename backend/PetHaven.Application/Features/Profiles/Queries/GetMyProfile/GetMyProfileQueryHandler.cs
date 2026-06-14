@@ -49,6 +49,7 @@ public class GetMyProfileQueryHandler : IRequestHandler<GetMyProfileQuery, MyPro
             {
                 dto.ProfileId = profile.Id;
                 dto.AdopterAddress = profile.Address;
+                dto.AdopterCountry = profile.Country;
                 dto.AdopterHousingType = profile.HousingType;
                 dto.AdopterHouseholdMembers = profile.HouseholdMembers;
                 dto.AdopterHasChildren = profile.HasChildren;

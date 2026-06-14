@@ -83,6 +83,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
                 {
                     UserId = user.Id,
                     Address = request.AdopterAddress?.Trim() ?? string.Empty,
+                    Country = request.AdopterCountry!.Trim(),
                     HousingType = request.AdopterHousingType ?? HousingType.Apartment,
                     HouseholdMembers = request.AdopterHouseholdMembers ?? 1,
                     HasChildren = request.AdopterHasChildren ?? false,

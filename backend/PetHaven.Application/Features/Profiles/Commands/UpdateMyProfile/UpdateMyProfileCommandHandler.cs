@@ -77,6 +77,7 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
         }
 
         profile.Address = request.AdopterAddress?.Trim() ?? string.Empty;
+        profile.Country = request.AdopterCountry?.Trim() ?? string.Empty;
         profile.HousingType = request.AdopterHousingType ?? HousingType.Apartment;
         profile.HouseholdMembers = request.AdopterHouseholdMembers ?? 1;
         profile.HasChildren = request.AdopterHasChildren ?? false;

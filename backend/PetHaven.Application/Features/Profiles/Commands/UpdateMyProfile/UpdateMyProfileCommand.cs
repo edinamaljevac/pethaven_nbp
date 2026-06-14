@@ -18,6 +18,7 @@ public class UpdateMyProfileCommand : IRequest<MyProfileDto>
     public double? ShelterLongitude { get; set; }
 
     public string? AdopterAddress { get; set; }
+    public string? AdopterCountry { get; set; }
     public HousingType? AdopterHousingType { get; set; }
     public int? AdopterHouseholdMembers { get; set; }
     public bool? AdopterHasChildren { get; set; }

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import countryList from 'react-select-country-list'
 import { profileApi } from '../../shared/api/endpoints'
 import { useAuth } from '../../shared/auth/AuthContext'
 import { Button } from '../../shared/ui/Button'
 import { Field, inputClass } from '../../shared/ui/Field'
 import { PageHeader } from '../../shared/ui/PageHeader'
 import { ErrorState, LoadingState } from '../../shared/ui/State'
+
+const countries = countryList().getData()
 
 export function ProfilePage() {
   const auth = useAuth()
@@ -101,6 +104,7 @@ function ShelterProfileFields({ profile, setProfile, findCoordinates, findingCoo
 function AdopterProfileFields({ profile, setProfile }) {
   return <>
     <Field label="Address"><input className={inputClass()} value={profile.adopterAddress ?? ''} onChange={(e) => setProfile({ ...profile, adopterAddress: e.target.value })} /></Field>
+    <Field label="Country"><select className={inputClass()} value={profile.adopterCountry ?? ''} onChange={(e) => setProfile({ ...profile, adopterCountry: e.target.value })}><option value="">Choose country</option>{countries.map(country => <option key={country.value} value={country.label}>{country.label}</option>)}</select></Field>
     <Field label="Housing type"><select className={inputClass()} value={profile.adopterHousingType ?? 0} onChange={(e) => setProfile({ ...profile, adopterHousingType: Number(e.target.value) })}><option value={0}>Apartment</option><option value={1}>House</option></select></Field>
     <Field label="Household members"><input className={inputClass()} type="number" value={profile.adopterHouseholdMembers ?? 1} onChange={(e) => setProfile({ ...profile, adopterHouseholdMembers: e.target.value })} /></Field>
     <Field label="Experience"><input className={inputClass()} value={profile.adopterExperienceWithPets ?? ''} onChange={(e) => setProfile({ ...profile, adopterExperienceWithPets: e.target.value })} /></Field>
